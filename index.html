@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Birthday Countdown</title>
+  <title>MP's Birthday Countdown</title>
 
   <!-- Google Fonts: Montserrat (số đếm) + Cormorant Garamond (lời tựa sang trọng) -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -43,6 +43,32 @@
       <path d="M17.5 7a7 7 0 010 10" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
     </svg>
   </button>
+
+  <!-- Mũi tên guide: chỉ vào nút nhạc, ẩn khi đã bật nhạc -->
+  <div class="music-hint" id="music-hint" aria-hidden="true">
+    <span class="music-hint__text">Bật nhạc nè~</span>
+    <svg class="music-hint__arrow" viewBox="0 0 80 70" fill="none" aria-hidden="true">
+      <!-- Đường cong teen teen -->
+      <path
+        class="music-hint__stroke"
+        d="M12 58 C 22 48, 28 28, 48 18 C 56 14, 64 12, 72 10"
+        stroke="currentColor"
+        stroke-width="2.4"
+        stroke-linecap="round"
+        fill="none"
+      />
+      <!-- Đầu mũi tên -->
+      <path
+        class="music-hint__head"
+        d="M62 6 L74 8 L68 18"
+        stroke="currentColor"
+        stroke-width="2.4"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        fill="none"
+      />
+    </svg>
+  </div>
 
   <!--
     Nhạc nền: đặt file tại assets/music.mp3

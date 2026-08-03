@@ -15,7 +15,7 @@
 const TARGET_DATE = "2026-09-08T00:00:00";
 
 /** Tên hiển thị trong lời tựa */
-const BIRTHDAY_NAME = "Vau";
+const BIRTHDAY_NAME = "Minh Phương";
 
 /** Đường dẫn nhạc nền (đặt file tại assets/music.mp3) */
 const MUSIC_SRC = "assets/music.mp3";
@@ -35,6 +35,7 @@ const els = {
   countdown: document.getElementById("countdown"),
   musicBtn: document.getElementById("music-toggle"),
   music: document.getElementById("bg-music"),
+  musicHint: document.getElementById("music-hint"),
 };
 
 let celebrationTriggered = false;
@@ -164,7 +165,13 @@ function initMusic() {
 
   els.music.volume = 0.45;
 
+  /** Ẩn mũi tên guide sau khi user đã tương tác với nút nhạc */
+  function hideMusicHint() {
+    els.musicHint?.classList.add("is-hidden");
+  }
+
   els.musicBtn.addEventListener("click", async () => {
+    hideMusicHint();
     try {
       if (els.music.paused) {
         await els.music.play();
