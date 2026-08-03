@@ -20,6 +20,12 @@ const BIRTHDAY_NAME = "Minh Phương";
 /** Đường dẫn nhạc nền (đặt file tại assets/music.mp3) */
 const MUSIC_SRC = "assets/music.mp3";
 
+/**
+ * Bắt đầu phát nhạc từ giây thứ mấy (0 = từ đầu bài).
+ * Ví dụ: 13 → bỏ qua 13 giây đầu, phát từ giây thứ 13.
+ */
+const MUSIC_START_SECONDS = 13;
+
 /* =========================================================
    Logic chính — không cần sửa nếu chỉ muốn đổi ngày / tên
    ========================================================= */
@@ -49,7 +55,7 @@ function pad(n) {
 /** Cập nhật lời tựa theo tên đã cấu hình */
 function initSubtitle() {
   if (!els.subtitle) return;
-  els.subtitle.textContent = `Đếm ngược đến ngày đặc biệt của ${BIRTHDAY_NAME}`;
+  els.subtitle.textContent = `Sắp đến ngày của ${BIRTHDAY_NAME}`;
 }
 
 /**
@@ -164,16 +170,43 @@ function initMusic() {
   }
 
   els.music.volume = 0.45;
+  // Tự loop thủ công để mỗi vòng vẫn bắt đầu từ MUSIC_START_SECONDS
+  els.music.loop = false;
+
+  /** Nhảy tới điểm bắt đầu đã cấu hình */
+  function seekToMusicStart() {
+    const start = Math.max(0, Number(MUSIC_START_SECONDS) || 0);
+    const duration = els.music.duration;
+    if (Number.isFinite(duration) && duration > 0 && start >= duration) {
+      els.music.currentTime = 0;
+      return;
+    }
+    els.music.currentTime = start;
+  }
 
   /** Ẩn mũi tên guide sau khi user đã tương tác với nút nhạc */
   function hideMusicHint() {
     els.musicHint?.classList.add("is-hidden");
   }
 
+  // Khi hết bài → quay lại điểm bắt đầu và phát tiếp
+  els.music.addEventListener("ended", async () => {
+    seekToMusicStart();
+    try {
+      await els.music.play();
+    } catch (err) {
+      console.warn("Không phát lại được nhạc.", err);
+    }
+  });
+
   els.musicBtn.addEventListener("click", async () => {
     hideMusicHint();
     try {
       if (els.music.paused) {
+        // Chỉ seek khi mới bắt đầu / đang ở đầu bài (không reset khi resume giữa chừng)
+        if (els.music.currentTime < 0.5) {
+          seekToMusicStart();
+        }
         await els.music.play();
         els.musicBtn.classList.add("is-playing");
         els.musicBtn.setAttribute("aria-pressed", "true");
