@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Birthday Countdown</title>
+
+  <!-- Google Fonts: Montserrat (số đếm) + Cormorant Garamond (lời tựa sang trọng) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=Montserrat:wght@300;400;500;600;700&display=swap"
+    rel="stylesheet"
+  />
+
+  <!-- Styles -->
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <!-- ========== BACKGROUND ==========
+       Thay ảnh nền tại đây: đổi url trong CSS (file css/style.css → biến --bg-image)
+       hoặc đặt file assets/background.jpg
+  ==================================== -->
+  <div class="bg" aria-hidden="true"></div>
+  <div class="bg-overlay" aria-hidden="true"></div>
+
+  <!-- Nút Bật/Tắt nhạc nền (góc trên bên phải) -->
+  <button
+    id="music-toggle"
+    class="music-toggle"
+    type="button"
+    aria-label="Bật nhạc nền"
+    aria-pressed="false"
+    title="Bật/Tắt nhạc nền"
+  >
+    <svg class="icon-muted" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M11 5L6 9H3v6h3l5 4V5z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+      <path d="M15 9.5l5 5M20 9.5l-5 5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+    </svg>
+    <svg class="icon-playing" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M11 5L6 9H3v6h3l5 4V5z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+      <path d="M15.5 9.5a4 4 0 010 5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+      <path d="M17.5 7a7 7 0 010 10" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+    </svg>
+  </button>
+
+  <!--
+    Nhạc nền: đặt file tại assets/music.mp3
+    (có thể đổi đường dẫn trong thẻ audio bên dưới)
+  -->
+  <audio id="bg-music" loop preload="auto">
+    <source src="assets/music.mp3" type="audio/mpeg" />
+  </audio>
+
+  <main class="stage">
+    <!-- Glassmorphism Card -->
+    <section class="glass-card" id="main-card">
+      <!-- Lời tựa — thay tên trong js/script.js (BIRTHDAY_NAME) -->
+      <p class="subtitle" id="subtitle">Đếm ngược đến ngày đặc biệt của bạn</p>
+
+      <!-- Bộ đếm: NGÀY | GIỜ | PHÚT | GIÂY -->
+      <div class="countdown" id="countdown" role="timer" aria-live="polite">
+        <div class="unit">
+          <span class="value" id="days">00</span>
+          <span class="label">Ngày</span>
+        </div>
+        <span class="separator" aria-hidden="true">:</span>
+        <div class="unit">
+          <span class="value" id="hours">00</span>
+          <span class="label">Giờ</span>
+        </div>
+        <span class="separator" aria-hidden="true">:</span>
+        <div class="unit">
+          <span class="value" id="minutes">00</span>
+          <span class="label">Phút</span>
+        </div>
+        <span class="separator" aria-hidden="true">:</span>
+        <div class="unit">
+          <span class="value" id="seconds">00</span>
+          <span class="label">Giây</span>
+        </div>
+      </div>
+
+      <!-- Thông điệp sinh nhật (ẩn cho đến khi đếm về 0) -->
+      <h1 class="birthday-message" id="birthday-message" hidden>
+        Happy Birthday to Me! 🎉
+      </h1>
+    </section>
+  </main>
+
+  <!-- canvas-confetti qua CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
+  <script src="js/script.js"></script>
+</body>
+</html>
