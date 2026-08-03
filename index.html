@@ -25,6 +25,9 @@
   <div class="bg" aria-hidden="true"></div>
   <div class="bg-overlay" aria-hidden="true"></div>
 
+  <!-- Hạt bụi vàng lấp lánh (tsparticles) — full màn hình, tương tác chuột -->
+  <div id="golden-dust" class="particles" aria-hidden="true"></div>
+
   <!-- Nút Bật/Tắt nhạc nền (góc trên bên phải) -->
   <button
     id="music-toggle"
@@ -85,38 +88,66 @@
       <!-- Lời tựa — thay tên trong js/script.js (BIRTHDAY_NAME) -->
       <p class="subtitle" id="subtitle">Sắp đến ngày của bạn</p>
 
-      <!-- Bộ đếm: NGÀY | GIỜ | PHÚT | GIÂY -->
+      <!-- Text động theo thời gian còn lại — cấu hình STATUS_MESSAGES trong js/script.js -->
+      <p class="status-line" id="status-line" aria-live="polite"></p>
+
+      <!-- Bộ đếm: NGÀY | GIỜ | PHÚT | GIÂY (flip từng chữ số) -->
       <div class="countdown" id="countdown" role="timer" aria-live="polite">
         <div class="unit">
-          <span class="value" id="days">00</span>
+          <div class="value" id="days" aria-label="00"></div>
           <span class="label">Ngày</span>
         </div>
         <span class="separator" aria-hidden="true">:</span>
         <div class="unit">
-          <span class="value" id="hours">00</span>
+          <div class="value" id="hours" aria-label="00"></div>
           <span class="label">Giờ</span>
         </div>
         <span class="separator" aria-hidden="true">:</span>
         <div class="unit">
-          <span class="value" id="minutes">00</span>
+          <div class="value" id="minutes" aria-label="00"></div>
           <span class="label">Phút</span>
         </div>
         <span class="separator" aria-hidden="true">:</span>
         <div class="unit">
-          <span class="value" id="seconds">00</span>
+          <div class="value" id="seconds" aria-label="00"></div>
           <span class="label">Giây</span>
         </div>
       </div>
 
-      <!-- Thông điệp sinh nhật (ẩn cho đến khi đếm về 0) -->
+      <!-- Hộp quà tương tác — hiện khi countdown về 0 -->
+      <div class="gift-stage" id="gift-stage" hidden>
+        <p class="gift-hint" id="gift-hint">Chạm để mở quà</p>
+        <button
+          type="button"
+          class="gift"
+          id="gift-btn"
+          aria-label="Mở hộp quà"
+        >
+          <span class="gift__lid" aria-hidden="true">
+            <span class="gift__lid-top"></span>
+            <span class="gift__bow">
+              <span class="gift__bow-loop gift__bow-loop--l"></span>
+              <span class="gift__bow-loop gift__bow-loop--r"></span>
+              <span class="gift__bow-knot"></span>
+            </span>
+          </span>
+          <span class="gift__box" aria-hidden="true">
+            <span class="gift__ribbon-v"></span>
+            <span class="gift__ribbon-h"></span>
+          </span>
+        </button>
+      </div>
+
+      <!-- Thông điệp sinh nhật (ẩn cho đến khi mở quà) -->
       <h1 class="birthday-message" id="birthday-message" hidden>
         Happy Birthday to Me! 🎉
       </h1>
     </section>
   </main>
 
-  <!-- canvas-confetti qua CDN -->
+  <!-- canvas-confetti + tsparticles qua CDN -->
   <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/tsparticles@3.8.1/tsparticles.bundle.min.js"></script>
   <script src="js/script.js"></script>
 </body>
 </html>

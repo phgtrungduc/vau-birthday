@@ -75,6 +75,17 @@ body {
   pointer-events: none;
 }
 
+/* Lớp hạt bụi vàng — không chặn click UI (detect chuột qua window) */
+.particles,
+.particles canvas {
+  position: fixed !important;
+  inset: 0;
+  width: 100% !important;
+  height: 100% !important;
+  z-index: 2;
+  pointer-events: none !important;
+}
+
 @keyframes bg-drift {
   from { transform: scale(1.02) translate(0, 0); }
   to   { transform: scale(1.06) translate(-1%, -0.5%); }
@@ -226,8 +237,30 @@ body {
   font-style: italic;
   letter-spacing: 0.02em;
   color: var(--gold-soft);
-  margin-bottom: clamp(1.75rem, 4vw, 2.75rem);
+  margin-bottom: clamp(0.85rem, 2vw, 1.15rem);
   animation: fade-up 1s 0.2s var(--ease) both;
+}
+
+/* Text động theo thời gian còn lại */
+.status-line {
+  font-family: var(--font-nums);
+  font-size: clamp(0.7rem, 1.6vw, 0.85rem);
+  font-weight: 500;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: clamp(1.35rem, 3.2vw, 2.1rem);
+  min-height: 1.2em;
+  transition: opacity 0.35s var(--ease), transform 0.35s var(--ease);
+}
+
+.status-line.is-swap {
+  opacity: 0;
+  transform: translateY(6px);
+}
+
+.glass-card.is-birthday .status-line {
+  display: none;
 }
 
 /* ---------- Countdown ---------- */
@@ -247,6 +280,10 @@ body {
 }
 
 .value {
+  display: inline-flex;
+  align-items: stretch;
+  justify-content: center;
+  gap: 0.04em;
   font-family: var(--font-nums);
   font-weight: 600;
   font-variant-numeric: tabular-nums;
@@ -255,17 +292,51 @@ body {
   letter-spacing: 0.02em;
   color: var(--text);
   text-shadow: 0 2px 24px rgba(0, 0, 0, 0.35);
-  transition: transform 0.25s var(--ease);
+  perspective: 600px;
 }
 
-.value.tick {
-  animation: tick-pulse 0.35s var(--ease);
+/* Mỗi chữ số — flip / slide dọc */
+.digit {
+  position: relative;
+  display: block;
+  width: 0.62em;
+  height: 1em;
+  overflow: hidden;
 }
 
-@keyframes tick-pulse {
-  0%   { transform: scale(1); }
-  40%  { transform: scale(1.04); }
-  100% { transform: scale(1); }
+.digit__reel {
+  display: flex;
+  flex-direction: column;
+  will-change: transform;
+}
+
+.digit__face {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 1em;
+  width: 100%;
+  backface-visibility: hidden;
+}
+
+/* Slide + nhẹ flip 3D khi đổi số */
+.digit.is-flipping .digit__reel {
+  animation: digit-flip 0.55s var(--ease) forwards;
+}
+
+@keyframes digit-flip {
+  0% {
+    transform: translateY(0) rotateX(0deg);
+    opacity: 1;
+  }
+  45% {
+    transform: translateY(-42%) rotateX(-28deg);
+    opacity: 0.55;
+  }
+  100% {
+    transform: translateY(-50%) rotateX(0deg);
+    opacity: 1;
+  }
 }
 
 .label {
@@ -320,13 +391,214 @@ body {
   animation: sparkle-in 1.4s var(--ease) both;
 }
 
-/* Ẩn countdown khi đã đến ngày */
+/* Ẩn countdown khi đã đến ngày — hiện hộp quà */
 .glass-card.is-birthday .countdown {
   display: none;
 }
 
 .glass-card.is-birthday .subtitle {
   margin-bottom: 1.25rem;
+}
+
+/* ---------- Gift box ---------- */
+.gift-stage {
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.25rem;
+  margin: 0.25rem auto 0.5rem;
+}
+
+.gift-stage.is-visible {
+  display: flex;
+  animation: fade-up 0.7s var(--ease) both;
+}
+
+.gift-stage.is-opened .gift-hint {
+  opacity: 0;
+  transform: translateY(-6px);
+  pointer-events: none;
+}
+
+.gift-hint {
+  font-family: var(--font-display);
+  font-size: clamp(1rem, 2.4vw, 1.25rem);
+  font-style: italic;
+  color: var(--gold-soft);
+  letter-spacing: 0.03em;
+  transition: opacity 0.4s var(--ease), transform 0.4s var(--ease);
+  animation: gift-hint-pulse 1.8s ease-in-out infinite;
+}
+
+@keyframes gift-hint-pulse {
+  0%, 100% { opacity: 0.7; }
+  50%      { opacity: 1; }
+}
+
+.gift {
+  position: relative;
+  width: clamp(110px, 28vw, 150px);
+  height: clamp(120px, 30vw, 160px);
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  padding: 0;
+  outline: none;
+  transform-origin: center bottom;
+  animation: gift-idle 2.2s ease-in-out infinite;
+  transition: transform 0.35s var(--ease);
+}
+
+.gift:hover {
+  transform: scale(1.04);
+}
+
+.gift:focus-visible {
+  filter: drop-shadow(0 0 12px rgba(232, 213, 163, 0.55));
+}
+
+.gift.is-opening {
+  animation: none;
+  pointer-events: none;
+}
+
+@keyframes gift-idle {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  25%      { transform: translateY(-4px) rotate(-1.5deg); }
+  75%      { transform: translateY(-2px) rotate(1.5deg); }
+}
+
+.gift__box {
+  position: absolute;
+  left: 8%;
+  right: 8%;
+  bottom: 0;
+  height: 58%;
+  border-radius: 6px 6px 10px 10px;
+  background:
+    linear-gradient(160deg, #c9a66b 0%, #a67c3d 45%, #8b6430 100%);
+  box-shadow:
+    0 10px 28px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.25);
+  overflow: hidden;
+}
+
+.gift__ribbon-v {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 18%;
+  transform: translateX(-50%);
+  background: linear-gradient(90deg, #f0e0b0, #e8d5a3 40%, #d4b978 100%);
+  box-shadow: inset 0 0 8px rgba(255, 255, 255, 0.35);
+}
+
+.gift__ribbon-h {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 42%;
+  height: 18%;
+  background: linear-gradient(180deg, #f0e0b0, #e8d5a3 40%, #d4b978 100%);
+}
+
+.gift__lid {
+  position: absolute;
+  left: 4%;
+  right: 4%;
+  bottom: 52%;
+  height: 28%;
+  z-index: 2;
+  transform-origin: center bottom;
+  transition: transform 0.7s var(--ease), opacity 0.5s ease;
+}
+
+.gift__lid-top {
+  position: absolute;
+  inset: 0;
+  border-radius: 8px 8px 4px 4px;
+  background:
+    linear-gradient(165deg, #e0c789 0%, #c9a66b 50%, #b08d4e 100%);
+  box-shadow:
+    0 -2px 12px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.35);
+}
+
+.gift__lid-top::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 0;
+  bottom: 0;
+  width: 18%;
+  transform: translateX(-50%);
+  background: linear-gradient(90deg, #f5ebc8, #e8d5a3 40%, #d4b978 100%);
+}
+
+.gift.is-opening .gift__lid {
+  transform: translateY(-72%) rotate(-18deg) translateX(12%);
+  opacity: 0.15;
+}
+
+.gift__bow {
+  position: absolute;
+  left: 50%;
+  top: -28%;
+  width: 54%;
+  height: 70%;
+  transform: translateX(-50%);
+  z-index: 3;
+  pointer-events: none;
+}
+
+.gift__bow-loop {
+  position: absolute;
+  top: 18%;
+  width: 48%;
+  height: 55%;
+  border-radius: 50% 50% 45% 45%;
+  background: radial-gradient(circle at 35% 35%, #f7efd4, #e8d5a3 55%, #c9a66b);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+}
+
+.gift__bow-loop--l {
+  left: 0;
+  transform: rotate(-28deg);
+}
+
+.gift__bow-loop--r {
+  right: 0;
+  transform: rotate(28deg);
+}
+
+.gift__bow-knot {
+  position: absolute;
+  left: 50%;
+  top: 42%;
+  width: 28%;
+  height: 28%;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: radial-gradient(circle at 30% 30%, #fff6d8, #e8d5a3 60%, #b8924a);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+}
+
+/* Sau khi mở: ẩn hộp quà, hiện lời chúc */
+.gift-stage.is-opened .gift {
+  animation: gift-vanish 0.55s 0.55s var(--ease) forwards;
+}
+
+@keyframes gift-vanish {
+  to {
+    opacity: 0;
+    transform: scale(0.85) translateY(12px);
+    visibility: hidden;
+  }
+}
+
+.gift-stage.is-opened {
+  pointer-events: none;
 }
 
 @keyframes sparkle-in {
@@ -379,10 +651,12 @@ body {
   .bg,
   .separator,
   .birthday-message.is-visible,
-  .value.tick,
   .music-hint,
   .music-hint__stroke,
-  .music-hint__head {
+  .music-hint__head,
+  .digit.is-flipping .digit__reel,
+  .gift,
+  .gift-hint {
     animation: none !important;
   }
 

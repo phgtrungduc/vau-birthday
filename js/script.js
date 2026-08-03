@@ -26,12 +26,38 @@ const MUSIC_SRC = "assets/music.mp3";
  */
 const MUSIC_START_SECONDS = 13;
 
+/** Âm lượng nhạc nền bình thường (0 → 1) */
+const MUSIC_VOLUME = 0.45;
+
+/** Âm lượng khi mở hộp quà / celebration */
+const MUSIC_VOLUME_CELEBRATION = 1;
+
+/** Bật/tắt hiệu ứng hạt bụi vàng (tsparticles) */
+const PARTICLES_ENABLED = true;
+
+/** Số lượng hạt (desktop; mobile sẽ tự giảm) */
+const PARTICLES_COUNT = 70;
+
+/**
+ * Text động phía trên countdown — chọn theo số ngày còn lại.
+ * Duyệt từ trên xuống: điều kiện maxDays đầu tiên thỏa (days <= maxDays) sẽ được dùng.
+ * Ví dụ: còn 20 ngày → "Coming soon...", còn 5 ngày → "Almost there..."
+ */
+const STATUS_MESSAGES = [
+  { maxDays: 0, text: "It's time!" },           // < 1 ngày (0 ngày đầy đủ)
+  { maxDays: 1, text: "Final day..." },         // còn 1 ngày
+  { maxDays: 7, text: "Almost there..." },      // ≤ 1 tuần
+  { maxDays: 30, text: "Coming soon..." },      // ≤ 1 tháng
+  { maxDays: Infinity, text: "Counting down..." }, // còn lâu hơn
+];
+
 /* =========================================================
    Logic chính — không cần sửa nếu chỉ muốn đổi ngày / tên
    ========================================================= */
 
 const els = {
   subtitle: document.getElementById("subtitle"),
+  statusLine: document.getElementById("status-line"),
   days: document.getElementById("days"),
   hours: document.getElementById("hours"),
   minutes: document.getElementById("minutes"),
@@ -42,14 +68,19 @@ const els = {
   musicBtn: document.getElementById("music-toggle"),
   music: document.getElementById("bg-music"),
   musicHint: document.getElementById("music-hint"),
+  giftStage: document.getElementById("gift-stage"),
+  giftBtn: document.getElementById("gift-btn"),
 };
 
+let giftRevealed = false;
 let celebrationTriggered = false;
 let confettiInterval = null;
+let currentStatusText = "";
 
-/** Pad số thành 2 chữ số */
+/** Pad số thành ít nhất 2 chữ số */
 function pad(n) {
-  return String(Math.max(0, n)).padStart(2, "0");
+  const s = String(Math.max(0, n));
+  return s.length < 2 ? s.padStart(2, "0") : s;
 }
 
 /** Cập nhật lời tựa theo tên đã cấu hình */
@@ -79,7 +110,104 @@ function getTimeRemaining() {
   return { total, days, hours, minutes, seconds };
 }
 
-/** Gán giá trị vào DOM; thêm pulse nhẹ khi giây đổi */
+const prefersReducedMotion = () =>
+  window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+/** Tạo 1 slot chữ số với mặt hiện tại */
+function createDigit(char) {
+  const digit = document.createElement("span");
+  digit.className = "digit";
+  digit.dataset.char = char;
+
+  const reel = document.createElement("span");
+  reel.className = "digit__reel";
+
+  const face = document.createElement("span");
+  face.className = "digit__face";
+  face.textContent = char;
+
+  reel.appendChild(face);
+  digit.appendChild(reel);
+  return digit;
+}
+
+/** Build / rebuild toàn bộ chữ số trong một unit (lần đầu hoặc đổi số chữ số) */
+function buildDigits(el, valueStr) {
+  el.replaceChildren();
+  for (const char of valueStr) {
+    el.appendChild(createDigit(char));
+  }
+  el.dataset.value = valueStr;
+  el.setAttribute("aria-label", valueStr);
+}
+
+/**
+ * Flip từng chữ số khi giá trị đổi.
+ * Chữ số không đổi → đứng yên; chữ số đổi → slide/flip dọc.
+ */
+function flipDigits(el, nextStr) {
+  if (!el) return;
+
+  const prevStr = el.dataset.value ?? "";
+  if (prevStr === nextStr) return;
+
+  // Lần đầu hoặc đổi độ dài (vd. 99 → 100 ngày) → dựng lại
+  if (!prevStr || prevStr.length !== nextStr.length) {
+    buildDigits(el, nextStr);
+    return;
+  }
+
+  const digits = el.querySelectorAll(".digit");
+  const reduceMotion = prefersReducedMotion();
+
+  nextStr.split("").forEach((char, i) => {
+    const digit = digits[i];
+    if (!digit) return;
+
+    if (digit.dataset.char === char) return;
+
+    if (reduceMotion) {
+      const face = digit.querySelector(".digit__face");
+      if (face) face.textContent = char;
+      digit.dataset.char = char;
+      return;
+    }
+
+    const reel = digit.querySelector(".digit__reel");
+    if (!reel) return;
+
+    // Dọn animation cũ nếu tick chồng
+    digit.classList.remove("is-flipping");
+    const currentFace = reel.querySelector(".digit__face");
+    if (currentFace) {
+      reel.replaceChildren(currentFace);
+      reel.style.animation = "none";
+      void reel.offsetWidth;
+      reel.style.animation = "";
+    }
+
+    const nextFace = document.createElement("span");
+    nextFace.className = "digit__face";
+    nextFace.textContent = char;
+    reel.appendChild(nextFace);
+
+    digit.dataset.char = char;
+
+    const onDone = () => {
+      reel.replaceChildren(nextFace);
+      digit.classList.remove("is-flipping");
+      reel.removeEventListener("animationend", onDone);
+    };
+
+    reel.addEventListener("animationend", onDone);
+    digit.classList.add("is-flipping");
+  });
+
+  el.dataset.value = nextStr;
+  el.setAttribute("aria-label", nextStr);
+}
+
+/** Gán giá trị vào DOM kèm flip animation */
 function renderCountdown(time) {
   const map = [
     [els.days, time.days],
@@ -88,37 +216,59 @@ function renderCountdown(time) {
     [els.seconds, time.seconds],
   ];
 
-  map.forEach(([el, value]) => {
-    if (!el) return;
-    const next = pad(value);
-    if (el.textContent !== next) {
-      el.textContent = next;
-      el.classList.remove("tick");
-      // Force reflow để restart animation
-      void el.offsetWidth;
-      el.classList.add("tick");
-    }
-  });
+  map.forEach(([el, value]) => flipDigits(el, pad(value)));
 }
 
-/** Pháo hoa liên tục khi đến ngày sinh nhật */
+/**
+ * Chọn câu status theo số ngày còn lại.
+ * STATUS_MESSAGES đã sắp từ ngưỡng nhỏ → lớn.
+ */
+function getStatusMessage(time) {
+  if (time.total <= 0) return "";
+
+  const sorted = [...STATUS_MESSAGES].sort((a, b) => a.maxDays - b.maxDays);
+  const match = sorted.find((item) => time.days <= item.maxDays);
+  return match?.text ?? sorted[sorted.length - 1]?.text ?? "";
+}
+
+/** Cập nhật dòng text động (có fade khi đổi nội dung) */
+function updateStatusLine(time) {
+  if (!els.statusLine || giftRevealed) return;
+
+  const next = getStatusMessage(time);
+  if (!next || next === currentStatusText) return;
+
+  const apply = () => {
+    els.statusLine.textContent = next;
+    currentStatusText = next;
+    els.statusLine.classList.remove("is-swap");
+  };
+
+  if (!currentStatusText || prefersReducedMotion()) {
+    apply();
+    return;
+  }
+
+  els.statusLine.classList.add("is-swap");
+  window.setTimeout(apply, 320);
+}
+
+/** Pháo hoa liên tục khi mở hộp quà */
 function launchConfetti() {
   if (typeof confetti !== "function") return;
 
   const defaults = {
-    startVelocity: 32,
+    startVelocity: 36,
     spread: 360,
-    ticks: 80,
+    ticks: 90,
     zIndex: 100,
     colors: ["#e8d5a3", "#ffffff", "#f0c27a", "#c9a66b", "#ffd700"],
   };
 
-  // Burst ngay lập tức
-  confetti({ ...defaults, particleCount: 120, origin: { x: 0.5, y: 0.55 } });
-  confetti({ ...defaults, particleCount: 60, origin: { x: 0.2, y: 0.7 } });
-  confetti({ ...defaults, particleCount: 60, origin: { x: 0.8, y: 0.7 } });
+  confetti({ ...defaults, particleCount: 140, origin: { x: 0.5, y: 0.55 } });
+  confetti({ ...defaults, particleCount: 70, origin: { x: 0.2, y: 0.7 } });
+  confetti({ ...defaults, particleCount: 70, origin: { x: 0.8, y: 0.7 } });
 
-  // Tiếp tục rơi nhẹ trong ~8 giây
   const end = Date.now() + 8000;
   confettiInterval = setInterval(() => {
     if (Date.now() > end) {
@@ -134,27 +284,103 @@ function launchConfetti() {
   }, 350);
 }
 
-/** Khi đếm về 0: hiện thông điệp + pháo hoa */
-function triggerCelebration() {
-  if (celebrationTriggered) return;
-  celebrationTriggered = true;
+/** Tăng âm lượng + đảm bảo nhạc đang phát */
+async function boostMusic() {
+  if (!els.music) return;
+
+  els.music.volume = Math.min(1, Math.max(0, MUSIC_VOLUME_CELEBRATION));
+  els.musicHint?.classList.add("is-hidden");
+
+  try {
+    if (els.music.paused) {
+      if (els.music.currentTime < 0.5) {
+        const start = Math.max(0, Number(MUSIC_START_SECONDS) || 0);
+        const duration = els.music.duration;
+        if (!(Number.isFinite(duration) && duration > 0 && start >= duration)) {
+          els.music.currentTime = start;
+        }
+      }
+      await els.music.play();
+    }
+    els.musicBtn?.classList.add("is-playing");
+    els.musicBtn?.setAttribute("aria-pressed", "true");
+    els.musicBtn?.setAttribute("aria-label", "Tắt nhạc nền");
+  } catch (err) {
+    console.warn("Không tăng/phát được nhạc celebration.", err);
+  }
+}
+
+/**
+ * Khi countdown về 0: ẩn bộ đếm, hiện hộp quà.
+ * Chưa confetti / chưa tăng nhạc — chờ user mở quà.
+ */
+function revealGift() {
+  if (giftRevealed) return;
+  giftRevealed = true;
 
   els.card?.classList.add("is-birthday");
-  if (els.message) {
-    els.message.hidden = false;
-    els.message.classList.add("is-visible");
+
+  if (els.giftStage) {
+    els.giftStage.hidden = false;
+    els.giftStage.classList.add("is-visible");
   }
 
-  launchConfetti();
+  if (els.subtitle) {
+    els.subtitle.textContent = `Một món quà dành cho ${BIRTHDAY_NAME}`;
+  }
+}
+
+/** Click mở hộp quà → confetti + lời chúc + nhạc lớn */
+function openGift() {
+  if (celebrationTriggered || !els.giftBtn) return;
+  celebrationTriggered = true;
+
+  els.giftBtn.classList.add("is-opening");
+  els.giftStage?.classList.add("is-opened");
+  els.giftBtn.setAttribute("aria-label", "Đã mở hộp quà");
+  els.giftBtn.disabled = true;
+
+  // Đợi nắp hộp bay lên rồi mới bung confetti + lời chúc
+  const revealDelay = prefersReducedMotion() ? 0 : 520;
+
+  window.setTimeout(() => {
+    els.card?.classList.add("is-celebrating");
+
+    if (els.message) {
+      els.message.hidden = false;
+      els.message.classList.add("is-visible");
+    }
+
+    if (els.subtitle) {
+      els.subtitle.textContent = `Chúc mừng sinh nhật ${BIRTHDAY_NAME}`;
+    }
+
+    launchConfetti();
+    boostMusic();
+
+    // Ẩn hẳn hộp quà sau khi nắp mở + fade xong
+    window.setTimeout(() => {
+      if (els.giftStage) {
+        els.giftStage.hidden = true;
+        els.giftStage.classList.remove("is-visible");
+      }
+    }, prefersReducedMotion() ? 0 : 700);
+  }, revealDelay);
+}
+
+function initGift() {
+  if (!els.giftBtn) return;
+  els.giftBtn.addEventListener("click", openGift);
 }
 
 /** Tick mỗi giây */
 function tick() {
   const time = getTimeRemaining();
   renderCountdown(time);
+  updateStatusLine(time);
 
   if (time.total <= 0) {
-    triggerCelebration();
+    revealGift();
   }
 }
 
@@ -169,7 +395,7 @@ function initMusic() {
     els.music.load();
   }
 
-  els.music.volume = 0.45;
+  els.music.volume = Math.min(1, Math.max(0, MUSIC_VOLUME));
   // Tự loop thủ công để mỗi vòng vẫn bắt đầu từ MUSIC_START_SECONDS
   els.music.loop = false;
 
@@ -224,9 +450,129 @@ function initMusic() {
 }
 
 /* ---------- Boot ---------- */
+/**
+ * Hạt bụi vàng lấp lánh rơi nhẹ + tương tác chuột (tsparticles).
+ * detectsOn: "window" → vẫn tương tác dù canvas pointer-events: none.
+ */
+async function initParticles() {
+  if (!PARTICLES_ENABLED) return;
+  if (prefersReducedMotion()) return;
+  if (typeof tsParticles === "undefined") {
+    console.warn("tsparticles chưa tải được.");
+    return;
+  }
+
+  const isMobile = window.matchMedia("(max-width: 480px)").matches;
+  const count = isMobile ? Math.max(28, Math.floor(PARTICLES_COUNT * 0.45)) : PARTICLES_COUNT;
+
+  try {
+    // Bundle full: đăng ký plugins nếu chưa (CDN UMD)
+    if (typeof loadFull === "function") {
+      await loadFull(tsParticles);
+    }
+
+    await tsParticles.load({
+      id: "golden-dust",
+      options: {
+        fullScreen: { enable: false },
+        background: { color: { value: "transparent" } },
+        fpsLimit: 60,
+        detectRetina: true,
+        particles: {
+          number: {
+            value: count,
+            density: { enable: true, width: 900, height: 900 },
+          },
+          color: {
+            value: ["#e8d5a3", "#f0e0b0", "#ffd700", "#fff6d8", "#c9a66b"],
+          },
+          shape: { type: "circle" },
+          opacity: {
+            value: { min: 0.15, max: 0.85 },
+            animation: {
+              enable: true,
+              speed: 0.9,
+              sync: false,
+              startValue: "random",
+            },
+          },
+          size: {
+            value: { min: 0.6, max: 2.6 },
+            animation: {
+              enable: true,
+              speed: 1.6,
+              sync: false,
+              startValue: "random",
+            },
+          },
+          move: {
+            enable: true,
+            direction: "bottom",
+            speed: { min: 0.25, max: 0.9 },
+            straight: false,
+            random: true,
+            drift: { min: -0.4, max: 0.4 },
+            gravity: {
+              enable: true,
+              acceleration: 0.18,
+              maxSpeed: 1.1,
+            },
+            outModes: { default: "out" },
+            attract: { enable: false },
+          },
+          shadow: {
+            enable: true,
+            color: "#e8d5a3",
+            blur: 4,
+            offset: { x: 0, y: 0 },
+          },
+          twinkle: {
+            particles: {
+              enable: true,
+              frequency: 0.08,
+              opacity: 1,
+            },
+          },
+        },
+        interactivity: {
+          detectsOn: "window",
+          events: {
+            onHover: {
+              enable: true,
+              mode: ["repulse", "bubble"],
+            },
+            onClick: { enable: false },
+            resize: { enable: true },
+          },
+          modes: {
+            repulse: {
+              distance: 90,
+              duration: 0.45,
+              speed: 0.35,
+              factor: 0.6,
+            },
+            bubble: {
+              distance: 110,
+              size: 4,
+              duration: 1.4,
+              opacity: 1,
+            },
+          },
+        },
+        pauseOnBlur: true,
+        pauseOnOutsideViewport: true,
+      },
+    });
+  } catch (err) {
+    console.warn("Không khởi tạo được tsparticles.", err);
+  }
+}
+
 function init() {
   initSubtitle();
   initMusic();
+  initGift();
+  initParticles();
   tick();
   setInterval(tick, 1000);
 }
