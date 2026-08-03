@@ -12,7 +12,7 @@
  *   "2026-12-25T00:00:00"  → 00:00 ngày 25/12/2026
  *   "2027-03-15T09:30:00"  → 09:30 ngày 15/03/2027
  */
-const TARGET_DATE = "2026-08-09T00:00:00";
+const TARGET_DATE = "2026-09-08T00:00:00";
 
 /** Tên hiển thị trong lời tựa */
 const BIRTHDAY_NAME = "Vau";
